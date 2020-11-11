@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import query_on_whoosh
 import config
-import smtp
+import smtplib
 import math
+import sqlite3
 
 #turn this file into a web app
 app = Flask(__name__)
@@ -20,8 +21,9 @@ def handle_test():
 
 @app.route("/query", strict_slashes=False)
 def handle_query():
+    page_index = int(request.args.get("p"))
     query_term = request.args.get("q")
-    return jsonify(query_on_whoosh.query(query_term))
+    #return jsonify(query_on_whoosh.query(query_term))
     return jsonify({"query_term": query_term, "search_results": query_on_whoosh.query(query_term, current_page=page_index)})
 
 @app.route("/query_view", strict_slashes=False)
@@ -32,12 +34,22 @@ def handle_query_view():
     page_index_arg = request.args.get("p")
     if not page_index_arg:
         page_index_arg = "1"
-    page_index = int(request.args.get("p"))
+
+    conn = sqlite3.connect('history.db')
+    c = conn.cursor()
+  
+    c.executescript(f"INSERT INTO search_terms (id, term, search_time) VALUES (?, ?, strftime('%s', 'now'));")
+    c.execute("SELECT * FROM search_terms;")
+    rows = c.fetchall()
+    conn.commit()
+    conn.close()
+
+    page_index = int(page_index_arg)
     query_results = query_on_whoosh.query(query_term, current_page=page_index)
     search_results = query_results[0]
     results_cnt = int(query_results[1])
     page_cnt = math.ceil(results_cnt/10)
-    return render_template("query.html", results = query_results, page_cnt=page_cnt)
+    return render_template("query.html", results = search_results, page_cnt=page_cnt, query_term = query_term, page_index = page_index)
 
 @app.route("/about", strict_slashes=False)
 def handle_about():
@@ -45,8 +57,9 @@ def handle_about():
 
 @app.route("/success", strict_slashes=False)
 def handle_request():
-    new_date = request.args.get("new_data")
+    new_data = request.args.get("new_data")
     server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.startls()
-    server.login("student.a.cosc381.2020fall@gmail.com", "sjian1@emich.edu", "request " + new_data)
+    server.starttls()
+    server.login("lawrences22e@gmail.com", config.gmail_password)
+    server.sendmail("lawrences22e@gmail.com", "lstraug1@emich.edu", new_data)
     return render_template("success.html", new_data=new_data)
