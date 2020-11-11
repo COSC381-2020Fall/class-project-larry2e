@@ -14,10 +14,24 @@
         <!-- we need to present the search results here-->
         {% for item in results %}
             <p>{{item.url}}</p>
-            <p>{{ item.description }}</p>
+            <p>{{ item.description | safe }}</p>
         {% endfor %}
-
-        {% for page_index in range(1, page_cnt+1) %}
-            <a href="query_view?q={{ query_term }}&p={{ page_index }}">{{ page_index }}</a> 
+        
+        <p>
+        {% for item in range(1, page_cnt+1) %}
+            {% if item == current_page %}
+            <b>
+                {% endif %}
+                <a href="query_view?q={{ query_term }}&p={{ item }}">{{ item }}</a>
+                {% if item == current_page %}
+            </b>
+            {% endif %}
+             
         {% endfor %}
+        </p>
+        <ul>
+            {% for history_item in history_list %}
+            <li>{{ history_item[1] }}</li>
+            {% endfor %}
+        </ul>
     {% endblock %}
